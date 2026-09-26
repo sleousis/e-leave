@@ -1,162 +1,225 @@
 # E-Leave Tool
 
-## Table of Contents
+E-Leave is a small leave management web app written in PHP in April 2020. Employees log in and submit leave requests. The request is e-mailed to their supervisor, who accepts or rejects it with one click. The employee then gets an e-mail with the outcome. Administrators (supervisors) have their own dashboard where they can create and edit users.
 
-* [Introduction](#introduction)
-    * [Quick Summary](#quick-summary)
-    * [Containers](#containers)
-    * [Project Tree](#project-tree)
-* [Requirements](#requirements)
-* [Installation](#installation)
-* [Example Navigation](#example-navigation)
-    * [Use Case 1 (Employee) - Submit a Request](#use-case-1-employee---submit-a-request)
-    * [Use Case 2 (Admin) - Create a User](#use-case-2-admin---create-a-user)
-    * [Use Case 3 (Admin) - Edit a User](#use-case-3-admin---edit-a-user)
-* [Database Schema](#database-schema)
+## Contents
 
-## Introduction
+* [Features](#features)
+* [Tech stack](#tech-stack)
+* [Repository layout](#repository-layout)
+* [Run with Docker](#run-with-docker)
+* [Run without Docker](#run-without-docker)
+* [Demo accounts](#demo-accounts)
+* [Example navigation](#example-navigation)
+* [Database schema](#database-schema)
+* [Notes and known limitations](#notes-and-known-limitations)
+* [Author](#author)
 
-### Quick Summary
+## Features
 
-E-Leave is a leave management software that provides to employees of a company the ability to create leave requests to their respective managers/supervisors. It also allows administrators to process those applications and oversee the incoming leave requests.
+* Employee login and a dashboard with all own requests and their status.
+* Submit a leave request. The number of working days skips weekends, a fixed list of public holidays and Easter Monday.
+* The supervisor gets an HTML e-mail with Accept and Reject links.
+* The employee gets an HTML e-mail with the result.
+* Admin login, list of users, create user and edit user.
 
-### Containers
+## Tech stack
 
-This is the main repository that hosts E-Leave Leave Management Tool's source code. It can be deployed in __4__ containerized web services via Docker Engine, which are the following:
+* PHP 7 with the `mysqli` and `calendar` extensions
+* MySQL 8.0
+* Bootstrap 3 (loaded from a CDN)
+* Docker Compose with four services:
+  * `php`: Apache with PHP, built from `Dockerfile` on `php:7.1.33-apache`, port 80
+  * `db`: `mysql:8.0`, port 3306
+  * `mailhog`: `mailhog/mailhog:v1.0.0`, catches all outgoing mail, web UI on port 8025
+  * `phpmyadmin`: `phpmyadmin/phpmyadmin`, port 8080
 
-* [MySQL DB](https://www.mysql.com/) (image: __mysql:8.0__, port: __3306__)
-* [Apache PHP Server](https://laravel.com/) (image: __php:7.1.33-apache__, port: __80__)
-* [MailHog](https://github.com/mailhog/MailHog) (image: __mailhog/mailhog:v1.0.0__, port: __8025__)
-* [phpMyAdmin](https://www.phpmyadmin.net/) (image: __phpmyadmin/phpmyadmin__, port __8080__)
+## Repository layout
 
-### Project Tree
+```
+admin.php              Admin dashboard (list of users)
+index.php              Employee dashboard (list of own requests)
+pages/                 Other pages (login, logout, submit request, handle request, create and edit user)
+pages/config.php       Database connection settings
+lib/                   Shared helper functions (date format, status colors, working days)
+templates/             HTML e-mail templates for requests and results
+css/, img/             Stylesheet and logo
+database/eleave.sql    Database dump with the schema and demo data
+database/database.mwb  MySQL Workbench model (database.png is the EER diagram)
+sample nagivation/     Screenshots of the three use cases below
+Dockerfile             PHP and Apache image with mhsendmail for MailHog
+docker-compose.yaml    The four services
+```
 
-The project tree consists of the following base folders:
+## Run with Docker
 
-* `/css`: Contains the basic `.css` styles that can be included in all pages.
-* `/database`: Contains a sample dump of the `eleave` MySQL database, and its EER diagram.
-* `/img`: Contains image assets.
-* `/lib`: Contains a collection of PHP functions that are commonly used across all pages.
-* `/pages`: Contains all the pages that a user can navigate through the tool, written in PHP.
-* `/sample navigation`: Contains PNG images of a simple usage guide.
-* `/templates`: Contains HTML templates that can be used dynamically for leave request e-mails.
+Prerequisites: Docker Engine and Docker Compose.
 
+```
+git clone https://github.com/sleousis/e-leave.git
+cd e-leave
+docker compose up -d
+```
 
-## Requirements
+On older Docker installs the command is `docker-compose up -d`. The database container imports `database/eleave.sql` on its first start.
 
-- Docker Engine
+Then open:
 
-> See [Get Docker Engine](https://docs.docker.com/install/linux/docker-ce/ubuntu/)
+* http://localhost for the employee pages
+* http://localhost/admin.php for the admin pages
+* http://localhost:8025 for MailHog, where all sent e-mails show up
+* http://localhost:8080 for phpMyAdmin (user `root`, password `root`)
 
-- docker-compose
+Stop everything with `docker compose down`. Other useful commands are `docker compose pause`, `docker compose unpause` and `docker compose restart`.
 
-> See [Install Docker Compose](https://docs.docker.com/compose/install/)
+The Docker setup was not run during the 2026 maintenance because Docker was not available. Its two broken steps were fixed and checked on their own. See the notes below.
 
-## Installation
-Run the following commands:
+## Run without Docker
 
-    $ git clone https://github.com/savvas-leoussis/e-leave.git
-    $ cd e-leave
+This is how the app was verified in 2026 on Ubuntu 20.04 (WSL) with PHP 7.4.3 and MySQL 8.0.42. On Windows, use WSL.
 
-To get all the web service's Docker containers up, simply run the following command:
+1. Install the packages:
 
-    $ docker-compose up -d
+   ```
+   sudo apt-get install php-cli php-mysql mysql-server
+   ```
 
-After a while, all services should be up, and you can simply hit the address `localhost:80` on your browser to access the main page.
-Also, you can access phpMyAdmin via `localhost:8080`, with username `root` and password `root`.
+2. Create the database and import the dump:
 
-To shutdown all services, simply run:
+   ```
+   sudo mysql -e "CREATE DATABASE eleave"
+   sudo mysql eleave < database/eleave.sql
+   ```
 
-    $ docker-compose down
+3. The app logs in as `root` with password `root` over TCP, like in the Docker setup. Create or change the MySQL user to match, or edit `pages/config.php`.
 
-To pause all services, and maintain their state, run:
+4. `pages/config.php` connects to the host `db`, which is the Docker service name. Either add `127.0.0.1 db` to `/etc/hosts` or change `DB_SERVER` to `127.0.0.1`.
 
-    $ docker-compose pause
+5. Start the PHP built-in server from the repository root:
 
-To unpause:
+   ```
+   php -S 127.0.0.1:8095
+   ```
 
-    $ docker-compose unpause
+   The pages load CSS, the logo and some links from `http://localhost`. For normal browser use serve the app on port 80 of `localhost` (for example `sudo php -S localhost:80`). This was not tried. The check below used port 8095 with curl only.
 
-To restart all services at once:
+Outgoing e-mail uses PHP `mail()`. Without MailHog you need a working `sendmail_path`. For the test run it was set to a command that appends the mails to a file.
 
-    $ docker-compose restart
+### What was verified
 
-> See [Compose command-line reference](https://docs.docker.com/compose/reference/) for more details.
+With the dump imported and the server running, curl went through every page:
 
-## Example Navigation
+```
+GET  /                                  302 to pages/user_login.php
+POST pages/user_login.php               302 to index.php (employee@company.com / password)
+GET  /                                  200, "Welcome to e-Leave, John Doe" and the request table
+POST pages/user_submit_request.php      302, new row with 5 requested days, status pending, e-mail sent
+POST pages/admin_login.php              302 to admin.php (admin@company.com / password)
+GET  admin.php                          200, list of users
+GET  pages/admin_handle_request.php     200, request status changed to accepted
+POST pages/admin_create_user.php        302, new user row created
+POST pages/admin_edit_user.php          302
+GET  pages/user_logout.php              302 to the login page
+GET  pages/admin_logout.php             302 to the login page
+```
 
-### Use Case 1 (Employee) - Submit a Request
+`php -l` reports no syntax errors in any file.
 
-> The employee logs into the tool on the URL: __http://localhost__ with his/her credentials provided by the company (Email: __employee@company.com__, Password: __password__).
+## Demo accounts
 
-![1](https://github.com/savvas-leoussis/e-leave/blob/master/sample%20nagivation/Use%20Case%201/1%20-%20E-Leave%20-%20Login.png?raw=true)
+The dump contains two users. Both have the password `password`.
 
-> He/She enters the main tool dashboard.
+| Role     | E-mail               |
+|----------|----------------------|
+| Employee | employee@company.com |
+| Admin    | admin@company.com    |
 
-![2](https://github.com/savvas-leoussis/e-leave/blob/master/sample%20nagivation/Use%20Case%201/2%20-%20E-Leave%20-%20Dashboard%20-%20Empty.png?raw=true)
+## Example navigation
 
-> The employee clicks the `Submit Request` button to create a new application, filling out all the fields.
+### Use Case 1 (Employee): Submit a request
 
-![3](https://github.com/savvas-leoussis/e-leave/blob/master/sample%20nagivation/Use%20Case%201/3%20-%20E-Leave%20-%20Submit%20Request.png?raw=true)
+The employee logs in at http://localhost (e-mail `employee@company.com`, password `password`).
 
->The new application is added to the dashboard, with the `Pending` status.
+![1](sample%20nagivation/Use%20Case%201/1%20-%20E-Leave%20-%20Login.png)
 
-![4](https://github.com/savvas-leoussis/e-leave/blob/master/sample%20nagivation/Use%20Case%201/4%20-%20E-Leave%20-%20Dashboard.png?raw=true)
+The employee sees the main dashboard.
 
-> Meanwhile, the corresponding supervisor receives an e-mail and either accepts or rejects the employee's request.
+![2](sample%20nagivation/Use%20Case%201/2%20-%20E-Leave%20-%20Dashboard%20-%20Empty.png)
 
-![5](https://github.com/savvas-leoussis/e-leave/blob/master/sample%20nagivation/Use%20Case%201/5%20-%20MailHog.png?raw=true)
+The employee clicks `Submit Request` and fills in all fields.
 
-> The supervisor clicks either the `Accept` or the `Reject` button.
+![3](sample%20nagivation/Use%20Case%201/3%20-%20E-Leave%20-%20Submit%20Request.png)
 
-![6](https://github.com/savvas-leoussis/e-leave/blob/master/sample%20nagivation/Use%20Case%201/6%20-%20Request%20accepted.png?raw=true)
+The new request appears on the dashboard with the status `Pending`.
 
-> The employee receives an e-mail with information about the outcome of his/her request.
+![4](sample%20nagivation/Use%20Case%201/4%20-%20E-Leave%20-%20Dashboard.png)
 
-![7](https://github.com/savvas-leoussis/e-leave/blob/master/sample%20nagivation/Use%20Case%201/7%20-%20MailHog%20-%20Accepted.png?raw=true)
+The supervisor receives an e-mail about the request.
 
-> Going back to the dashboard, the status of the request is updated.
+![5](sample%20nagivation/Use%20Case%201/5%20-%20MailHog.png)
 
-![8](https://github.com/savvas-leoussis/e-leave/blob/master/sample%20nagivation/Use%20Case%201/8%20-%20E-Leave%20-%20Dashboard%20-%20Accepted.png?raw=true)
+The supervisor clicks `Accept` or `Reject`.
 
-### Use Case 2 (Admin) - Create a User
+![6](sample%20nagivation/Use%20Case%201/6%20-%20Request%20accepted.png)
 
-> The administrator logs into the tool admin page on the URL: __http://localhost/admin.php__ with his/her credentials provided by the company (Email: __admin@company.com__, Password: __password__).
+The employee receives an e-mail with the outcome.
 
-![1](https://github.com/savvas-leoussis/e-leave/blob/master/sample%20nagivation/Use%20Case%202/1-%20E-Leave%20-%20Admin%20Login.png?raw=true)
+![7](sample%20nagivation/Use%20Case%201/7%20-%20MailHog%20-%20Accepted.png)
 
-> Then he/she enters the main tool admin dashboard.
+Back on the dashboard, the status of the request is updated.
 
-![2](https://github.com/savvas-leoussis/e-leave/blob/master/sample%20nagivation/Use%20Case%202/2%20-%20E-Leave%20-%20Admin%20Dashboard.png?raw=true)
+![8](sample%20nagivation/Use%20Case%201/8%20-%20E-Leave%20-%20Dashboard%20-%20Accepted.png)
 
-> The admin clicks the `Create User` button to create a new user, filling out all the fields.
+### Use Case 2 (Admin): Create a user
 
-![3](https://github.com/savvas-leoussis/e-leave/blob/master/sample%20nagivation/Use%20Case%202/3%20-%20E-Leave%20-%20Create%20User.png?raw=true)
+The administrator logs in at http://localhost/admin.php (e-mail `admin@company.com`, password `password`).
 
->The new user is added to the admin dashboard.
+![1](sample%20nagivation/Use%20Case%202/1-%20E-Leave%20-%20Admin%20Login.png)
 
-![4](https://github.com/savvas-leoussis/e-leave/blob/master/sample%20nagivation/Use%20Case%202/4%20-%20E-Leave%20-%20Admin%20Dashboard%202.png?raw=true)
+The administrator sees the admin dashboard.
 
-### Use Case 3 (Admin) - Edit a User
+![2](sample%20nagivation/Use%20Case%202/2%20-%20E-Leave%20-%20Admin%20Dashboard.png)
 
-> The administrator logs into the tool admin page on the URL: __http://localhost/admin.php__ with his/her credentials provided by the company (Email: __admin@company.com__, Password: __password__).
+The administrator clicks `Create User` and fills in all fields.
 
-![1](https://github.com/savvas-leoussis/e-leave/blob/master/sample%20nagivation/Use%20Case%203/1-%20E-Leave%20-%20Admin%20Login.png?raw=true)
+![3](sample%20nagivation/Use%20Case%202/3%20-%20E-Leave%20-%20Create%20User.png)
 
-> Then he/she enters the main tool admin dashboard.
+The new user appears on the admin dashboard.
 
-![2](https://github.com/savvas-leoussis/e-leave/blob/master/sample%20nagivation/Use%20Case%203/2%20-%20E-Leave%20-%20Admin%20Dashboard%202.png?raw=true)
+![4](sample%20nagivation/Use%20Case%202/4%20-%20E-Leave%20-%20Admin%20Dashboard%202.png)
 
-> The admin clicks the row containing the user he/she wants to edit from the table of users, filling out all the fields.
+### Use Case 3 (Admin): Edit a user
 
-![3](https://github.com/savvas-leoussis/e-leave/blob/master/sample%20nagivation/Use%20Case%203/3%20-%20E-Leave%20-%20Edit%20User.png?raw=true)
+The administrator logs in at http://localhost/admin.php.
 
->The edited user is added to the admin dashboard.
+![1](sample%20nagivation/Use%20Case%203/1-%20E-Leave%20-%20Admin%20Login.png)
 
-![4](https://github.com/savvas-leoussis/e-leave/blob/master/sample%20nagivation/Use%20Case%203/4%20-%20E-Leave%20-%20Admin%20Dashboard%203.png?raw=true)
+The administrator sees the admin dashboard.
 
-## Database Schema
+![2](sample%20nagivation/Use%20Case%203/2%20-%20E-Leave%20-%20Admin%20Dashboard%202.png)
 
-The `eleave` database complies with the following EER diagram:
+The administrator clicks the row of the user to edit and fills in all fields.
 
-![database](https://raw.githubusercontent.com/savvas-leoussis/e-leave/master/database/database.png)
+![3](sample%20nagivation/Use%20Case%203/3%20-%20E-Leave%20-%20Edit%20User.png)
+
+The edited user appears on the admin dashboard.
+
+![4](sample%20nagivation/Use%20Case%203/4%20-%20E-Leave%20-%20Admin%20Dashboard%203.png)
+
+## Database schema
+
+The `eleave` database has two tables, `users` and `applications`. The EER diagram:
+
+![database](database/database.png)
+
+## Notes and known limitations
+
+* The base image `php:7.1.33-apache` is Debian 10 (buster). Its package mirrors moved to archive.debian.org, so the `Dockerfile` now points apt there. The old Go download URL on storage.googleapis.com returns 403, so it now uses dl.google.com. Both steps were checked outside Docker. `apt-get update` and the package install succeed in the image's own base filesystem, and Go 1.8.3 still builds `mhsendmail`. A full `docker compose build` was not run.
+* The database login (`root` / `root`) and the demo passwords are development defaults committed to the repository. Do not use this setup as is on a public server.
+* URLs to `http://localhost` are hard-coded in the pages and e-mails. The app only looks right when served at http://localhost on port 80.
+* With all PHP notices shown, PHP 7.4 prints three notices. The two login pages call `session_start()` twice and the request form reads an undefined variable. They do not stop anything from working. The Docker image uses PHP defaults, which hide notices.
+* The public holiday list in `lib/get_workdays.php` is fixed and follows the Italian calendar.
+
+## Author
+
+Savvas Leousis
