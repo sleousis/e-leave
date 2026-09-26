@@ -1,0 +1,9 @@
+.git
+.github
+.gitignore
+.dockerignore
+Dockerfile
+docker-compose*.y*ml
+database
+sample nagivation
+README.md

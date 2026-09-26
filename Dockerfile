@@ -7,3 +7,6 @@ RUN docker-php-ext-install calendar
 RUN docker-php-ext-configure calendar
 RUN docker-php-ext-install mysqli
 RUN docker-php-ext-enable mysqli
+
+# The app itself, so the image runs on its own. docker-compose.yaml still mounts the working copy over it for development.
+COPY . /var/www/html/

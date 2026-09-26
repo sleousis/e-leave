@@ -7,6 +7,7 @@ E-Leave is a small leave management web app written in PHP in April 2020. Employ
 * [Features](#features)
 * [Tech stack](#tech-stack)
 * [Repository layout](#repository-layout)
+* [Download](#download)
 * [Run with Docker](#run-with-docker)
 * [Run without Docker](#run-without-docker)
 * [Demo accounts](#demo-accounts)
@@ -50,9 +51,26 @@ css/, img/             Stylesheet and logo
 database/eleave.sql    Database dump with the schema and demo data
 database/database.mwb  MySQL Workbench model (database.png is the EER diagram)
 sample nagivation/     Screenshots of the three use cases below
-Dockerfile             PHP and Apache image with the Mailpit sendmail command
-docker-compose.yaml    The four services
+Dockerfile             PHP and Apache image with the app and the Mailpit sendmail command
+docker-compose.yaml    The four services, built from the working copy
+docker-compose.release.yml  The four services, using the published image
+.github/                Release workflow and its smoke test
 ```
+
+## Download
+
+Each release on the [Releases page](https://github.com/sleousis/e-leave/releases) comes with a ready-made Docker image and two files:
+
+* `docker-compose.release.yml` starts the app from the published image `ghcr.io/sleousis/e-leave` together with MySQL, Mailpit and phpMyAdmin. Nothing is built locally.
+* `eleave.sql` is the database dump with the demo data. The compose file mounts it into MySQL.
+
+Put both files in one folder and run:
+
+```
+docker compose -f docker-compose.release.yml up -d
+```
+
+Then open http://localhost and log in with a [demo account](#demo-accounts). Stop it with `docker compose -f docker-compose.release.yml down`. The image can also be pulled on its own with `docker pull ghcr.io/sleousis/e-leave:latest`. It contains the app with PHP and Apache but needs the MySQL and Mailpit services from the compose file.
 
 ## Run with Docker
 

@@ -1,0 +1,76 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  IMAGE: ghcr.io/sleousis/e-leave
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Smoke test the stack built from the Dockerfile
+        run: bash .github/smoke-test.sh docker-compose.yaml
+
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=ref,event=tag
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.title=e-leave
+            org.opencontainers.image.description=E-Leave leave management web app (PHP and Apache)
+
+      - name: Build and push the image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: ${{ startsWith(github.ref, 'refs/tags/v') }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Prepare the release files
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          mkdir dist
+          sed "s#${IMAGE}:latest#${IMAGE}:${GITHUB_REF_NAME}#" docker-compose.release.yml > dist/docker-compose.release.yml
+          cp database/eleave.sql dist/eleave.sql
+
+      - name: Smoke test the published image
+        if: startsWith(github.ref, 'refs/tags/v')
+        working-directory: dist
+        run: bash ../.github/smoke-test.sh docker-compose.release.yml
+
+      - name: Publish the GitHub release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v3
+        with:
+          files: |
+            dist/docker-compose.release.yml
+            dist/eleave.sql
+          body: |
+            This release publishes the E-Leave web app as a public Docker image at ghcr.io/sleousis/e-leave:${{ github.ref_name }} (also tagged latest).
+            To try it, download docker-compose.release.yml and eleave.sql into one folder and run `docker compose -f docker-compose.release.yml up -d`.
+            Then open http://localhost and log in as employee@company.com or admin@company.com with the password `password`.
+            Sent e-mails show up in Mailpit at http://localhost:8025.

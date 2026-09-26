@@ -1,0 +1,49 @@
+# Runs e-Leave from the published image. Keep eleave.sql next to this file.
+# Start: docker compose -f docker-compose.release.yml up -d
+services:
+  php:
+    image: ghcr.io/sleousis/e-leave:latest
+    restart: unless-stopped
+    ports:
+      - '80:80'
+    networks:
+      - eleave
+
+  db:
+    image: mysql:26.7.0
+    restart: unless-stopped
+    ports:
+      - '3306:3306'
+    environment:
+      MYSQL_DATABASE: eleave
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - ./eleave.sql:/docker-entrypoint-initdb.d/eleave.sql
+    networks:
+      - eleave
+    command: ['--character-set-server=utf8mb4', '--collation-server=utf8mb4_unicode_ci']
+
+  phpmyadmin:
+    image: phpmyadmin:5.2.3-apache
+    restart: unless-stopped
+    depends_on:
+      - db
+    ports:
+      - '8080:80'
+    environment:
+      PMA_HOSTS: db
+    networks:
+      - eleave
+
+  mailpit:
+    image: axllent/mailpit:v1.31.2
+    restart: unless-stopped
+    ports:
+      - '1025:1025'
+      - '8025:8025'
+    networks:
+      - eleave
+
+networks:
+  eleave:
+    driver: bridge
