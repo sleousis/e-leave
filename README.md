@@ -61,6 +61,7 @@ Prerequisites: Docker Engine and Docker Compose.
 ```
 git clone https://github.com/sleousis/e-leave.git
 cd e-leave
+docker compose build
 docker compose up -d
 ```
 
@@ -75,7 +76,27 @@ Then open:
 
 Stop everything with `docker compose down`. Other useful commands are `docker compose pause`, `docker compose unpause` and `docker compose restart`.
 
-The Docker setup was not run during the 2026 maintenance because Docker was not available. The same versions of PHP, MySQL and Mailpit were tested without Docker as described below.
+### Verified with Docker
+
+In September 2026 the Docker setup was run with Docker Engine 29.8.1 and Docker Compose 5.5.1 on Ubuntu 20.04 (WSL). `docker compose build` and `docker compose up -d` finished without errors, and the database container imported `database/eleave.sql` on its first start. Then curl checked every page at http://localhost:
+
+```
+GET  /                                  302 to pages/user_login.php
+POST pages/user_login.php               302 to index.php (employee@company.com / password)
+GET  /                                  200, "Welcome to e-Leave, John Doe"
+POST pages/user_submit_request.php      302, new request with 5 working days, status pending
+GET  http://localhost:8025/api/v1/messages   "e-Leave Request" e-mail to admin@company.com
+POST pages/admin_login.php              302 to admin.php (admin@company.com / password)
+GET  admin.php                          200, list of users
+GET  pages/admin_handle_request.php     200, request accepted, "e-Leave Response" e-mail to employee@company.com
+POST pages/admin_create_user.php        302, new user created
+POST pages/admin_edit_user.php          302, user updated
+GET  pages/user_logout.php              302 to the login page
+GET  pages/admin_logout.php             302 to the login page
+GET  http://localhost:8080              phpMyAdmin login page, login as root works, shows MySQL 26.7.0 and the eleave database
+```
+
+No page showed a PHP error and the PHP container log had no warnings.
 
 ## Run without Docker
 
@@ -241,7 +262,6 @@ Bootstrap stays on 3.x. Version 3.4.1 is the last 3.x release and a drop-in upda
 
 ## Notes and known limitations
 
-* A full `docker compose build` was not run because Docker was not available. The image tags were checked on Docker Hub. PHP, MySQL and Mailpit were tested at the same versions outside Docker.
 * The database login (`root` / `root`) and the demo passwords are development defaults committed to the repository. Do not use this setup as is on a public server.
 * URLs to `http://localhost` are hard-coded in the pages and e-mails. The app only looks right when served at http://localhost on port 80.
 * The screenshots are from 2020 and show MailHog. Mailpit looks different but shows the same e-mails.
