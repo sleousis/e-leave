@@ -108,7 +108,7 @@ if (!isset($_SESSION["admin_loggedin"]) || $_SESSION["admin_loggedin"] !== true)
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.css">
     <link rel="stylesheet" type="text/css" href="http://localhost/css/style.css">
 </head>
 <body style="background-color: #f4f4f4; margin: 0 !important; padding: 0 !important;">

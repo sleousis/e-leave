@@ -137,7 +137,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.css">
     <link rel="stylesheet" type="text/css" href="http://localhost/css/style.css">
 </head>
 <body style="background-color: #f4f4f4; margin: 0 !important; padding: 0 !important;">
@@ -171,7 +171,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                           <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
                               <div class="form-group <?php echo (!empty($date_from_err)) ? 'has-error' : ''; ?>">
                                   <label>Date From</label>
-                                  <input type="date" min='1970-01-01' max='2037-12-31' name="date_from" class="form-control" value="<?php echo $new_password; ?>">
+                                  <input type="date" min='1970-01-01' max='2037-12-31' name="date_from" class="form-control" value="<?php echo $date_from; ?>">
                                   <span class="help-block"><?php echo $date_from_err; ?></span>
                               </div>
                               <div class="form-group <?php echo (!empty($date_to_err)) ? 'has-error' : ''; ?>">
